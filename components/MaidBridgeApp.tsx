@@ -51,6 +51,9 @@ export default function MaidBridgeApp() {
       // 7) Load enhanced features (marketing intel, mobile nav, enhanced routing).
       await loadScript("/mb-enhanced.js");
 
+      // 8) Load lead intelligence (conversations, heatmap, CRM pipeline).
+      await loadScript("/mb-leads.js");
+
       const init = (window as any).__mbInit;
       if (typeof init === "function") {
         try {

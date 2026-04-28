@@ -531,6 +531,35 @@
     });
   };
 
+  // ═══ MOBILE ROUTE PANEL COLLAPSE ═══
+  function injectCollapseBtn(panel) {
+    if (panel.querySelector(".rte-collapse-btn")) return;
+    var head = panel.querySelector(".rte-head");
+    if (!head) return;
+
+    var btn = document.createElement("button");
+    btn.className = "rte-collapse-btn";
+    btn.innerHTML = '<i class="fas fa-chevron-down"></i>';
+    btn.title = "Collapse / Expand";
+    btn.onclick = function (e) {
+      e.stopPropagation();
+      panel.classList.toggle("collapsed");
+    };
+
+    // Insert before the close button if present, otherwise append
+    var closeBtn = head.querySelector(".xb");
+    if (closeBtn) {
+      head.insertBefore(btn, closeBtn);
+    } else {
+      head.appendChild(btn);
+    }
+  }
+
+  window.toggleRoutePanel = function () {
+    var panel = $("rtePanel");
+    if (panel) panel.classList.toggle("collapsed");
+  };
+
   // ═══ ENHANCED ROUTE BUILDER ═══
   var origBuildRoute = window.buildRoute;
   window.buildRoute = function (pts) {
@@ -539,6 +568,13 @@
     setTimeout(function () {
       var panel = $("rtePanel");
       if (!panel || !panel.classList.contains("vis")) return;
+
+      // Inject collapse toggle on mobile
+      if (window.innerWidth <= 768) {
+        injectCollapseBtn(panel);
+        // Start collapsed so user sees the map pins
+        panel.classList.add("collapsed");
+      }
 
       if (!panel.querySelector(".rte-nav-btn")) {
         var navBtn = document.createElement("button");
@@ -594,6 +630,166 @@
     window.open(url, "_blank");
   }
   window.openGoogleMapsRoute = openGoogleMapsRoute;
+
+  // ═══ ENHANCED ROUTE EXPORT (Google Maps style) ═══
+  window.exportRoute = function () {
+    var A = getA();
+    var origin = window.routeOrigin || getHQ();
+    var rteStops = $("rteStops");
+    if (!rteStops) return;
+
+    // Gather ordered stops with full address data
+    var stops = [];
+    var stopEls = rteStops.querySelectorAll(".rte-stop");
+    stopEls.forEach(function (el) {
+      var nameEl = el.querySelector(".sn");
+      if (!nameEl) return;
+      var addr = A.find(function (a) {
+        return a.street === nameEl.textContent;
+      });
+      if (addr) stops.push(addr);
+    });
+
+    if (!stops.length) {
+      if (window.msg) window.msg("warning", "Export", "No stops to export");
+      return;
+    }
+
+    // Compute leg distances & times
+    var legs = [];
+    var totalDist = 0;
+    var totalTime = 0;
+    var prevLat = origin.lat;
+    var prevLng = origin.lng;
+
+    stops.forEach(function (s, i) {
+      var dist = havMi(prevLat, prevLng, s.lat, s.lng);
+      var driveMin = Math.max(1, Math.round(dist / 0.4)); // ~24mph avg neighborhood
+      var walkMin = Math.max(1, Math.round(dist / 0.05));
+      totalDist += dist;
+      totalTime += driveMin;
+      legs.push({
+        stop: i + 1,
+        street: s.street || "",
+        city: s.city || "",
+        status: s.status || "pending",
+        value: s.value || "",
+        notes: (s.notes || "").replace(/"/g, "'"),
+        lat: s.lat,
+        lng: s.lng,
+        legDist: dist,
+        legDrive: driveMin,
+        legWalk: walkMin,
+        cumDist: totalDist,
+        cumTime: totalTime,
+        competitor: s.competitor || ""
+      });
+      prevLat = s.lat;
+      prevLng = s.lng;
+    });
+
+    // Build Google Maps multi-stop URL
+    var gmUrl = "https://www.google.com/maps/dir/" + origin.lat + "," + origin.lng;
+    stops.forEach(function (s) {
+      gmUrl += "/" + s.lat + "," + s.lng;
+    });
+
+    // Format date
+    var now = new Date();
+    var dateStr = now.toLocaleDateString("en-US", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+    var timeStr = now.toLocaleTimeString("en-US", {
+      hour: "2-digit", minute: "2-digit"
+    });
+
+    // ─── Build CSV ───
+    var csv = "";
+    csv += "MAID BRIDGE — ROUTE SHEET\r\n";
+    csv += "Generated:," + dateStr + " at " + timeStr + "\r\n";
+    csv += "Origin:,\"" + (origin.name || "HQ") + "\",\"" + (origin.addr || "") + "\"," + origin.lat + "," + origin.lng + "\r\n";
+    csv += "Total Stops:," + stops.length + "\r\n";
+    csv += "Total Distance:," + totalDist.toFixed(2) + " mi\r\n";
+    csv += "Est. Drive Time:," + totalTime + " min (" + (totalTime / 60).toFixed(1) + " hrs)\r\n";
+    csv += "Google Maps:," + gmUrl + "\r\n";
+    csv += "\r\n";
+
+    // Header row
+    csv += '"Stop #"';
+    csv += ',"Address"';
+    csv += ',"City"';
+    csv += ',"Status"';
+    csv += ',"Value"';
+    csv += ',"Latitude"';
+    csv += ',"Longitude"';
+    csv += ',"Leg Distance"';
+    csv += ',"Leg Drive (min)"';
+    csv += ',"Leg Walk (min)"';
+    csv += ',"Cumulative Dist"';
+    csv += ',"Cumulative Time"';
+    csv += ',"Competitor"';
+    csv += ',"Notes"';
+    csv += ',"Google Maps Link"';
+    csv += "\r\n";
+
+    // Data rows
+    legs.forEach(function (l) {
+      var pinUrl = "https://www.google.com/maps/search/?api=1&query=" + l.lat + "," + l.lng;
+      csv += '"' + l.stop + '"';
+      csv += ',"' + l.street + '"';
+      csv += ',"' + l.city + '"';
+      csv += ',"' + l.status + '"';
+      csv += ',"' + l.value + '"';
+      csv += "," + l.lat;
+      csv += "," + l.lng;
+      csv += ',"' + (l.legDist < 0.1 ? Math.round(l.legDist * 5280) + " ft" : l.legDist.toFixed(2) + " mi") + '"';
+      csv += "," + l.legDrive;
+      csv += "," + l.legWalk;
+      csv += ',"' + l.cumDist.toFixed(2) + ' mi"';
+      csv += ',"' + l.cumTime + ' min"';
+      csv += ',"' + l.competitor + '"';
+      csv += ',"' + l.notes + '"';
+      csv += ',"' + pinUrl + '"';
+      csv += "\r\n";
+    });
+
+    // Summary footer
+    csv += "\r\n";
+    csv += "SUMMARY\r\n";
+    csv += "Stops:," + stops.length + "\r\n";
+    csv += "Total Distance:," + totalDist.toFixed(2) + " mi\r\n";
+    csv += "Est. Drive:," + totalTime + " min\r\n";
+    csv += "Avg per Stop:," + (totalDist / stops.length).toFixed(2) + " mi / " + Math.round(totalTime / stops.length) + " min\r\n";
+    csv += "Full Route (Google Maps):," + gmUrl + "\r\n";
+
+    // Status breakdown
+    var statusCounts = {};
+    stops.forEach(function (s) {
+      var st = s.status || "pending";
+      statusCounts[st] = (statusCounts[st] || 0) + 1;
+    });
+    csv += "\r\nSTATUS BREAKDOWN\r\n";
+    Object.keys(statusCounts).forEach(function (s) {
+      csv += s + "," + statusCounts[s] + "\r\n";
+    });
+
+    var filename = "MaidBridge_Route_" + now.toISOString().split("T")[0] + ".csv";
+    if (window.dlFile) {
+      window.dlFile(csv, filename, "text/csv");
+    } else {
+      var blob = new Blob([csv], { type: "text/csv" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    if (window.msg) window.msg("success", "Route Exported", stops.length + " stops · " + totalDist.toFixed(1) + "mi · " + filename);
+  };
 
   function enhanceRouteStops() {
     var stops = $("rteStops");

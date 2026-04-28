@@ -300,7 +300,12 @@
             .sb{padding:6px 10px;font-size:9px;border-radius:8px}
             .stat-v{font-size:20px}.stat-l{font-size:9px}
 
-            .rte-panel{bottom:66px;left:8px;right:8px;width:auto}
+            .rte-panel{bottom:66px;left:8px;right:8px;width:auto;max-height:50vh;transition:max-height .35s cubic-bezier(.4,0,.2,1),padding .35s cubic-bezier(.4,0,.2,1)}
+            .rte-panel.collapsed{max-height:44px;overflow:hidden;padding:0 14px}
+            .rte-panel.collapsed .rte-head{margin:0 -14px;padding:10px 14px;border-radius:var(--rad)}
+            .rte-panel.collapsed .rte-stops,.rte-panel.collapsed .rte-stats,.rte-panel.collapsed .rte-btns,.rte-panel.collapsed .rte-nav-btn,.rte-panel.collapsed .rte-segment{display:none}
+            .rte-collapse-btn{display:flex;width:28px;height:28px;border-radius:8px;border:1px solid var(--bd);background:var(--s2);color:var(--t);align-items:center;justify-content:center;cursor:pointer;font-size:11px;transition:transform .25s ease}
+            .rte-panel.collapsed .rte-collapse-btn{transform:rotate(180deg)}
             .rte-stop{padding:8px 6px}
             .rte-stop-num{width:24px;height:24px;font-size:9px}
             .sn{font-size:11px}.sd{font-size:9px}

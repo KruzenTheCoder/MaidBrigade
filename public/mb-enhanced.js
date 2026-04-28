@@ -27,7 +27,7 @@
       '<button class="mnav-btn on" data-view="map" onclick="mbNav(\'map\',this)"><i class="fas fa-map"></i><span>Map</span></button>' +
       '<button class="mnav-btn" data-view="list" onclick="mbNav(\'list\',this)"><i class="fas fa-list"></i><span>Leads</span></button>' +
       '<button class="mnav-btn" data-view="route" onclick="mbNav(\'route\',this)"><i class="fas fa-route"></i><span>Route</span></button>' +
-      '<button class="mnav-btn" data-view="intel" onclick="mbNav(\'intel\',this)"><i class="fas fa-brain"></i><span>Intel</span></button>' +
+      '<button class="mnav-btn" data-view="field" onclick="enterFieldMode()"><i class="fas fa-walking"></i><span>Field</span></button>' +
       '<button class="mnav-btn" data-view="more" onclick="mbNav(\'more\',this)"><i class="fas fa-ellipsis-h"></i><span>More</span></button>' +
       "</div>";
     document.body.appendChild(nav);

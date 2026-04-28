@@ -54,6 +54,9 @@ export default function MaidBridgeApp() {
       // 8) Load lead intelligence (conversations, heatmap, CRM pipeline).
       await loadScript("/mb-leads.js");
 
+      // 9) Load field agent mode (mobile canvassing UI).
+      await loadScript("/mb-field.js");
+
       const init = (window as any).__mbInit;
       if (typeof init === "function") {
         try {
